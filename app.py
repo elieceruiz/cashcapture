@@ -50,7 +50,7 @@ def get_categories():
         return []
 
 
-@st.cache_data
+@st.cache_data (ttl=60)
 def load_payees():
     return get_payees()
 
