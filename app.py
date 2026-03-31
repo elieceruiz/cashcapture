@@ -12,7 +12,6 @@ import json
 from collections import Counter
 import requests
 from pymongo import MongoClient
-from io import BytesIO  # 👈 agrégalo arriba con los imports
 
 # 🔥 importar util limpio
 from cloudinary_upload import upload_image
@@ -128,41 +127,52 @@ def normalize_item(name):
         name = name.replace(b, "")
     return name.strip()
 
+
 def analyze_image(file):
     file.seek(0)
+    image_bytes = file.read()
+    base64_image = base64.b64encode(image_bytes).decode("utf-8")
 
-    img = Image.open(file)
-    img.thumbnail((800, 800))
+    prompt = """
+    Devuelve SOLO JSON.
 
-    buffer = BytesIO()
-    img.save(buffer, format="JPEG", quality=70)
+    Formato:
+    {
+    "opciones": [
+        {"item": "NOMBRE", "precio": 1234},
+        {"item": "NOMBRE", "precio": null}
+    ],
+    "contexto": "vending | tienda | transferencia"
+    }
 
-    compressed_bytes = buffer.getvalue()
+    Reglas:
+    - Usa SOLO marcas o nombres cortos (AMPER, COCA-COLA, CHOCORAMO)
+    - NO describas colores, tamaños ni características
+    - NO uses frases como "bebida energética"
+    - Máximo 5 opciones
+    - Si no ves precio → null
+    """
 
-    base64_image = base64.b64encode(compressed_bytes).decode("utf-8")
-
-    prompt = """ ... """
-
-    with st.spinner("Analizando imagen..."):
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": prompt},
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": f"data:image/jpeg;base64,{base64_image}"
-                            }
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt},
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:image/jpeg;base64,{base64_image}"
                         }
-                    ],
-                }
-            ],
-        )
+                    }
+                ],
+            }
+        ],
+    )
 
     return response.choices[0].message.content
+
 
 # UI
 st.set_page_config(page_title="cashcapture", layout="centered")
