@@ -1,0 +1,8 @@
+# requirements.txt
+
+streamlit
+Pillow
+cloudinary
+python-dotenv
+openai>=1.0.0
+pymongo
